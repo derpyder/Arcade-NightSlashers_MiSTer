@@ -36,7 +36,7 @@ Region notes: **Over Sea** (World, ver 1.2) and **Korea** (ver 1.3, parent); the
 - Port by **rejectedcoins**.
 
 License: **GPLv3**. This repository currently distributes binary releases and the arcade ROM
-mapping files; the full source tree will be published here once the remaining Data East family
-cores built on it are completed. Source is available on request in the meantime, per the GPL.
+mapping files; the full source tree will be published here after the remaining Data East family
+cores built on it are completed.
 
 *This core is for use with legally obtained ROMs only.*
