@@ -1,0 +1,65 @@
+# Night Slashers — MAME -> MRA generation  (7c-3d, Arch B: at-fetch decrypt/reshuffle)
+# The MRA only assembles ROMs into the SDRAM banks (byte/word interleave). ALL descramble is AT FETCH:
+#  - deco156 (maincpu) decrypts at the ARM fetch (jtnslasher_deco156, raw ROM in SDRAM).
+#  - deco56/deco74 (gfx1/gfx2) decrypt + reshuffle at the tilemap fetch (jtnslasher_gfxdec); SDRAM holds
+#    reorder(raw) — the only download transform, a word-addr bit18<->19 swap in jtnslasher_dwnld (BA2).
+#  - gfx3/gfx4 sprites reshuffle at the obj fetch (jtnslasher_sdram rewire); SDRAM holds the NATIVE
+#    layout (this file's job = produce it). BA3 download = identity.
+# tiles/oki/maincpu load in natural MAME order; sprites1/sprites2 use explicit parts= (MAME 0.284's
+# sprite region layout differs from the 0.276 pipeline AND needs a dense plane-4 gather). No descramble here.
+# *** gfx3 layout (the §8 assembly): obj0lo = mbh-02..05 (planes 0-3, LOAD16_BYTE) ; obj0hi = mbh-06/07
+#     (plane 4) loaded DENSE (contiguous) for obj0hi_addr=nwi. Validate the generated split with
+#     `jtframe mra nslasher` + a download check (folds into 7e). ***
+
+[global]
+author=["rejectedcoins"]   # TODO confirm preferred author handle
+
+[parse]
+# jframe matches this regex against filepath.Base(xml sourcefile), so use the BASENAME (not the path).
+sourcefile=[ "deco32.cpp" ]   # MAME 0.284 = dataeast/deco32.cpp. Regions: tiles1/2, sprites1/2, oki1/2.
+main_setnames=[ "nslasher" ]  # parent = the highlighted/main MRA (Go field Main_setnames)
+mustbe.machines=[
+    "nslasher",     # Korea Rev 1.3 (parent)
+    "nslasherj",    # Japan Rev 1.2
+    "nslashers",    # Over Sea Rev 1.2
+]
+
+[ROM]
+regions = [
+    { name="maincpu",  width=32, reverse=true },                              # ARM, deco156-enc
+    { name="audiocpu", start="SND_START",  No_offset=true },                  # Z80
+    { name="oki1",     start="PCM1_START" },
+    { name="oki2",     start="PCM2_START" },
+    { name="tiles1",   start="JTFRAME_BA2_START", width=16, No_offset=true }, # gfx1 mbh-00, deco56-enc (single ROM)
+    { name="tiles2",   start="GFX2_START",        width=16, No_offset=true }, # gfx2 mbh-01, deco74-enc (single ROM)
+    # ---- 5bpp/4bpp sprites: a CUSTOM split (NOT MAME ROM_START). The obj fetch reads obj0lo @BA3+0
+    # (32b, planes 0-3) + obj0hi @BA3+0x800000 (8b, plane-4 DENSE) + obj1 @GFX4. MAME interleaves plane-4
+    # every 4th byte; the SDRAM split needs it dense, so we GATHER mbh-06/07 contiguous. The sprite ROMs
+    # are reassigned to DISTINCT regions (sprites1a/1b/obj0hi6/obj0hi7/sprites2) in doc/mame.xml via
+    # mame-dump/transform_xml.py, so jframe's normal per-region interleave DERIVES the byte order (no
+    # hand-written map — the same path that got maincpu right). VERIFIED byte-exact vs obj*_native.hex
+    # by ver/gfx/mra_check.py (layout) + ver/gfx/mra_assemble.py (the jframe-assembled blob).
+    # planes 0-3 : mbh-04 (even/low @0) + mbh-02 (odd/high @1), each 2 MB -> BA3 0x000000
+    # reverse=true puts offset0 in the low byte (matches down_pass even=LSB; verified by mra_assemble.py)
+    { name="sprites1a", start="JTFRAME_BA3_START", width=16, No_offset=true, reverse=true },
+    # planes 0-3 : mbh-05 (even/low @0) + mbh-03 (odd/high @1), each 0.5 MB -> BA3 0x400000
+    { name="sprites1b", start="SPR1B_START",       width=16, No_offset=true, reverse=true },
+    # plane 4 SPREAD (obj0 FOLD): width=16 map="10" -> each plane-4 byte in its OWN 16-bit word {0,P4} (low
+    # byte), so jtnslasher_dwnld can word-remap it into the 8-byte obj0 slots. mbh-06 -> BA3 0x800000 (2 MB
+    # spread); mbh-07 -> BA3 0xA00000 (0.5 MB spread). plane4=word[7:0] post-hwswap16 in the adapter.
+    { name="obj0hi6",  start="SPR1C_START", width=16, No_offset=true, parts=[ {name="mbh-06.18c", map="10"} ] },
+    { name="obj0hi7",  start="SPR1D_START", width=16, No_offset=true, parts=[ {name="mbh-07.19c", map="10"} ] },
+    # gfx4 4bpp : mbh-09 (even/low @0) + mbh-08 (odd/high @1) -> obj1 @ GFX4
+    { name="sprites2", start="GFX4_START",          width=16, No_offset=true, reverse=true },
+    { name="prom",     skip=true },                 # ln-00.j7 priority PROM (unused by core)
+    { name="plds",     skip=true },
+]
+
+# FOLD: sprites2 (gfx4/obj1) moved BEFORE the sprites so it lands in BA2 (after tiles2, @ GFX4_START=0x610000).
+order = [ "maincpu", "audiocpu", "oki1", "oki2", "tiles1", "tiles2", "sprites2", "sprites1a", "sprites1b", "obj0hi6", "obj0hi7" ]
+
+[dipsw]
+# TODO: extract from deco32.c INPUT_PORTS(nslasher); set base/bitcnt after M0.5.
+
+[buttons]
+Names = [ { machine="nslasher", names="Attack,Jump,Special" } ]   # TODO verify 3-button mapping

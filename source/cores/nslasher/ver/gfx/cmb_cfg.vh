@@ -1,0 +1,9 @@
+`define PRI 3'd6
+`define EN1 1'b1
+`define EN2 1'b1
+`define EN3 1'b1
+`define EN4 1'b1
+`define TMB0 3'd2
+`define TMB1 3'd3
+`define O1BASE 3'd6
+`define ACEAL 48'h080808081010

@@ -1,0 +1,69 @@
+# Night Slashers — SDRAM banks / audio mixer / clock enables  (nf4 DENSE obj0 fold, NO SDRAM_LARGE)
+# Engines fetch render-format gfx (the reshuffle is a pure address permutation, proven bijective).
+# The obj0 (gfx3) fetch is 5bpp = 40-bit; ONE DW32 bus, a 2-read FSM over a DENSE pack in a standard 8 MB BA3:
+#   read#1 planes 0-3 word @ 32b-word nwi     (byte 4*nwi)
+#   read#2 plane4 word @ 0x140000+(nwi>>2)    (DENSE plane4 byte-stream @ BA3-rel 0x500000, lane = nwi[1:0])
+# NO JTFRAME_SDRAM_LARGE and NO JTFRAME_BA3_LEN (no DOUBLE slot).  gfx4/obj1 shares BA3 @ GFX4_OFFSET.
+# (This reverts the nf5 8-byte-slot/16MB-LARGE pack that sim-passed but garbled obj0 planes on hardware.)
+params:
+  - { name: SND_OFFSET,    value: "(`SND_START -`JTFRAME_BA1_START)>>1" }
+  - { name: PCM1_OFFSET,   value: "(`PCM1_START-`JTFRAME_BA1_START)>>1" }
+  - { name: PCM2_OFFSET,   value: "(`PCM2_START-`JTFRAME_BA1_START)>>1" }
+  - { name: GFX2_OFFSET,   value: "(`GFX2_START -`JTFRAME_BA2_START)>>1" }
+  - { name: GFX4_OFFSET,   value: "(`GFX4_START -`JTFRAME_BA3_START)>>1" }   # gfx4/obj1 in BA3 (dense fold)
+
+clocks:
+  clk:
+    - freq: 7080500          # 28.322MHz/4  — ARM (156)
+      outputs: [ cen_arm ]
+    - freq: 3580000          # 32.22MHz/9   — Z80 (cen_fm) + YM2151 (cen_fm + cen_fm2=/2)
+      gate: [ snd ]
+      outputs: [ cen_fm, cen_fm2 ]
+    - freq: 2014000          # 32.22MHz/16  — OKI #2
+      outputs: [ cen_oki2 ]
+    - freq: 1007000          # 32.22MHz/32  — OKI #1
+      outputs: [ cen_oki1 ]
+
+download:
+  post_addr: true            # post pass = where deco156/deco56/deco74 descramble + gfx reshuffle run
+  post_data: true
+
+audio:
+  rsum: 20k
+  channels:
+    # gain per channel is inversely proportional to rsum (op-amp summing model). MAME deco32 routes:
+    # fm(YM2151)=0.40, oki1=0.80, oki2=0.10. oki1 (20k) already = MAME 0.80 baseline (ref). oki2 was
+    # 120k (=0.133, hot) -> 160k = MAME's exact 0.10. fm was 40k (=0.40, MAME-exact) but the music
+    # (YM2151) reads too loud vs the SFX on the cab, so raise fm rsum 40k->56k => ~0.29 (about 28%
+    # quieter than MAME's route) to favour the OKI SFX/voice. Tune fm further (bigger rsum = quieter
+    # music) if still hot; oki1/oki2 stay at MAME.
+    - { name: fm,   module: jt51,   rsum: 56k  }   # YM2151 music: MAME 0.40 -> ~0.29 (user: music too loud)
+    - { name: oki1, module: jt6295, rsum: 20k  }   # dominant SFX/voice (MAME route 0.80, reference)
+    - { name: oki2, module: jt6295, rsum: 160k }   # quiet SFX (MAME route 0.10 exact; was 120k=hot)
+
+sdram:
+  banks:
+    # BA0 — VESTIGIAL tied-off placeholder (the real ARM work RAM is BRAM, u_wram in jtnslasher_game).
+    # Must be 16-bit: jtframe_ram_rq.din is hardwired [15:0], so a 32-bit RW slot fails to elaborate in
+    # Quartus (din[0+:32] out of range). Kept (not removed) to preserve BA1/BA2/BA3 numbering. TODO: bram:.
+    - buses:
+      - { name: ram,  addr_width: 17, data_width: 16, rw: true, din: main_dout, dsn: dsn }
+    # BA1 — main ARM ROM (1 MB) + Z80 (64 KB) + OKI samples (512 KB ea)
+    - buses:
+      - { name: main, addr_width: 20, data_width: 32 }
+      - { name: snd,  addr_width: 16, data_width:  8, offset: SND_OFFSET  }
+      - { name: oki1, addr_width: 19, data_width:  8, offset: PCM1_OFFSET }
+      - { name: oki2, addr_width: 19, data_width:  8, offset: PCM2_OFFSET }
+    # BA2 — tilemap gfx ONLY (Arch B: ENCRYPTED reorder(raw), 16-bit; jtnslasher_gfxdec decrypts at fetch).
+    # gfx1 = mbh-00 (2 MB) read by PF1 (chars8) + PF2 (tiles16); gfx2 = mbh-01 (2 MB) read by PF3/PF4.
+    - buses:
+      - { name: gfx1a, addr_width: 21, data_width: 16 }                          # PF1 (chars8 wrapper)
+      - { name: gfx1b, addr_width: 21, data_width: 16 }                          # PF2 (tiles16, same gfx1)
+      - { name: gfx2a, addr_width: 21, data_width: 16, offset: GFX2_OFFSET  }    # PF3
+      - { name: gfx2b, addr_width: 21, data_width: 16, offset: GFX2_OFFSET  }    # PF4 (same gfx2)
+    # BA3 — sprite gfx (nf4 DENSE FOLD, no SDRAM_LARGE): obj0 5bpp = ONE DW32 bus, 2-read FSM over a DENSE
+    # pack (planes word @ byte 4*nwi ; plane4 DENSE byte-stream @ BA3-rel 0x500000, read as a 32b word +
+    # lane[nwi[1:0]] select).  gfx4/obj1 4bpp shares BA3 @ GFX4_OFFSET (BA3-rel 0x640000, 1 MB).  Fits 8 MB.
+    - buses:
+      - { name: obj0, addr_width: 23, data_width: 32 }                           # gfx3 planes + dense plane4 (8 MB)
+      - { name: obj1, addr_width: 20, data_width: 32, offset: GFX4_OFFSET  }     # gfx4 4bpp (1 MB), in BA3

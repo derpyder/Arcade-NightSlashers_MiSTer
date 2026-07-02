@@ -1,0 +1,28 @@
+# Night Slashers — HDL file list (7d full integration)
+nslasher:
+  - get:
+    - jtnslasher_game.v
+    - jtnslasher_main.v
+    - jtnslasher_snd.v
+    - jtnslasher_vmem.v
+    - jtnslasher_video.v
+    - jtnslasher_tilemap.v
+    - jtnslasher_obj.v
+    - jtnslasher_colmix.v
+    - jtnslasher_sdram.v
+    - jtnslasher_gfxdec.v
+    - jtnslasher_dwnld.v
+    - jtnslasher_deco156.v
+# Vendored Amber a23 ARM (hdl/amber/*.v) — files.yaml `get:` forbids subdir paths, so the a23 set is
+# added to the Quartus build via a .qip at M4 (and to sims via explicit -I/file lists, e.g. run_7d.sh).
+
+jtframe:
+  - from: cpu
+    get:
+      - jtframe_z80.yaml
+
+jt51:
+
+jt6295:
+
+jteeprom:

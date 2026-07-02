@@ -1,0 +1,55 @@
+# Night Slashers — JTFRAME macros  (nf24 SINGLE-FETCH obj0: 8-byte-slot fold, SDRAM_LARGE 16MB BA3)
+# NOTE: no trailing comments on NAME=value lines — jtframe takes everything after '=' as the value.
+CORENAME=JTNSLASHER
+
+JTFRAME_BUTTONS=3
+
+JTFRAME_WIDTH=320
+JTFRAME_HEIGHT=240
+JTFRAME_COLORW=8
+
+# TODO confirm deco32 pixel clock (HSync 15.86kHz => ~6.7 MHz)
+JTFRAME_PXLCLK=6
+# JTFRAME_STATUS stripped: clean full-screen game render (no debug overlay).
+
+# nf24 SINGLE-FETCH obj0 = the nf5-class 8-byte-slot repack REDONE WITH the verification nf5 lacked
+# (GATE A packing math + GATE B real-loader byte-lane, both PASS; ver/gfx/verify_fold8_gateA/B.py).
+# HW-measured obj0 2-read fetch latency = 46-66 clk (nf23 probe) = 2 SDRAM row-cycles; budget ~22.
+# Fix: per nwi an 8-byte BA3 slot {planes word @8n, plane4 byte @8n+4}; obj0 = DW32-DOUBLE slot;
+# ONE 4-beat burst caches planes AND plane4 lines; FSM read#2 = guaranteed cache hit (~2 clk).
+# The nf5 defect (plane4 byte lane after the big-endian mra interleave) is closed: .mra doubles the
+# plane4 stream with map="01" (EVEN blob byte -> slot byte 8n+4 -> read#2 data[7:0]); nf5's map="10"
+# put it in the ODD byte while the RTL read the even one. obj1/gfx4 relocated BA3->BA2 tail.
+
+# ---- ROM / SDRAM layout: download-blob byte offsets (MRA concatenation order) ----
+# BA0: ARM work RAM (runtime only; not downloaded)            32-bit, 128 KB
+# BA1: main ARM ROM 0x100000 (deco156 at-fetch) + Z80 0x10000 + OKI1 0x80000 + OKI2 0x80000
+# BA2: gfx1 0x200000 (mbh-00) + gfx2 0x200000 (mbh-01) ENCRYPTED reorder(raw) decrypt-at-fetch
+#      + gfx4/obj1 0x100000 (mbh-08/09 interleave16) @ BA2-rel 0x400000 (GFX4_START, moved from BA3)
+# BA3 (nf24 8-byte-slot, 16 MB SDRAM_LARGE, stream then dwnld-remapped into slots):
+#      planes stream  @ BA3-rel 0x000000 (s1a 0x400000 + s1b 0x100000, word w -> slot word 4*(w>>1)+(w&1))
+#      plane4 DOUBLED @ BA3-rel 0x500000 (mbh-06 x2 + mbh-07 x2, word i -> slot word 4*i+2, byte 8n+4)
+#      slot image spans 0xA00000 (10 MB) -> JTFRAME_SDRAM_LARGE + JTFRAME_BA3_LEN=64 (DOUBLE burst)
+JTFRAME_BA1_START=0x000000
+SND_START=0x100000
+PCM1_START=0x110000
+PCM2_START=0x190000
+JTFRAME_BA2_START=0x210000
+GFX2_START=0x410000
+GFX4_START=0x610000
+JTFRAME_BA3_START=0x710000
+SPR1B_START=0xB10000
+SPR1C_START=0xC10000
+SPR1D_START=0xE10000
+
+JTFRAME_SDRAM_LARGE=1
+JTFRAME_BA3_LEN=64
+
+# nf25: nslasher has NO dipswitches (EEPROM/service-menu configured, MAME nslasher INPUT_PORTS has zero
+# PORT_DIPNAME). The honest "core settings" = the operator service menu: JTFRAME_OSD_TEST adds the OSD
+# "Service mode" toggle (drives dip_test -> IN1 bit3 TEST switch); JTFRAME_OSD_VOL adds an FX-volume OSD
+# control (snd_vol -> rcmix master gain, already wired in the generated wrapper).
+JTFRAME_OSD_TEST=1
+JTFRAME_OSD_VOL=1
+
+[mister]

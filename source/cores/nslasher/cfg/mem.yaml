@@ -1,0 +1,73 @@
+# Night Slashers — SDRAM banks / audio mixer / clock enables  (nf24 SINGLE-FETCH obj0 8-byte-slot fold)
+# Engines fetch render-format gfx (the reshuffle is a pure address permutation, proven bijective).
+# The obj0 (gfx3) fetch is 5bpp = 40-bit; ONE DW32-DOUBLE bus over an 8-byte-slot pack in a 16 MB BA3
+# (JTFRAME_SDRAM_LARGE + JTFRAME_BA3_LEN=64):
+#   per nwi: planes word @ byte 8*nwi, plane4 byte @ byte 8*nwi+4 (bytes 8n+6/7 unwritten, never read)
+#   read#1 planes word  @ 32b-word 2*nwi   (the 4-beat DOUBLE burst caches BOTH 32-bit lines)
+#   read#2 plane4 word  @ 32b-word 2*nwi+1 (guaranteed bcache HIT ~2 clk -> ONE SDRAM row-cycle/fetch)
+# gfx4/obj1 relocated BA3 -> BA2 tail (removes the second BA3 client). GATE A+B PASS
+# (ver/gfx/verify_fold8_gateA.py, verify_fold8_gateB.py) before any RTL/build work.
+params:
+  - { name: SND_OFFSET,    value: "(`SND_START -`JTFRAME_BA1_START)>>1" }
+  - { name: PCM1_OFFSET,   value: "(`PCM1_START-`JTFRAME_BA1_START)>>1" }
+  - { name: PCM2_OFFSET,   value: "(`PCM2_START-`JTFRAME_BA1_START)>>1" }
+  - { name: GFX2_OFFSET,   value: "(`GFX2_START -`JTFRAME_BA2_START)>>1" }
+  - { name: GFX4_OFFSET,   value: "(`GFX4_START -`JTFRAME_BA2_START)>>1" }   # gfx4/obj1 in BA2 tail (nf24)
+
+clocks:
+  clk:
+    - freq: 7080500          # 28.322MHz/4  — ARM (156)
+      outputs: [ cen_arm ]
+    - freq: 3580000          # 32.22MHz/9   — Z80 (cen_fm) + YM2151 (cen_fm + cen_fm2=/2)
+      gate: [ snd ]
+      outputs: [ cen_fm, cen_fm2 ]
+    - freq: 2014000          # 32.22MHz/16  — OKI #2
+      outputs: [ cen_oki2 ]
+    - freq: 1007000          # 32.22MHz/32  — OKI #1
+      outputs: [ cen_oki1 ]
+
+download:
+  post_addr: true            # post pass = where deco156/deco56/deco74 descramble + gfx reshuffle run
+  post_data: true
+
+audio:
+  rsum: 20k
+  channels:
+    # gain per channel = Rfb/rsum (audio.go calc_opamp_gain; global rsum 20k = Rfb) x per-module preamp,
+    # normalized to the loudest channel (oki1 = the 0x80 anchor). MAME deco32 routes for reference:
+    # fm(YM2151)=0.40, oki1=0.80, oki2=0.10. TUNE HISTORY: fm 40k(MAME-exact)->56k (nf24, user: music
+    # too loud)->90k (nf25 round 2, user: "music can be lowered more", ~x0.62 of nf24). oki2
+    # 120k(hot)->160k(MAME 0.10)->110k (nf25, user: "other sounds raised", ~x1.45 of nf24). oki1 is
+    # already the normalization ceiling (gain 1.00) and cannot go higher; overall level = OSD FX volume
+    # (JTFRAME_OSD_VOL, nf25) / MiSTer master. Bigger rsum = quieter channel.
+    # ⚠️ 2026-07-02: rsum edits here only take effect on WSL REGENERATION -- the nf25 "round 2"
+    # values never reached a build (Windows-only recompiles). The LIVE gains are now hand-set in
+    # mister/jtnslasher_game_sdram.v (g0=0x14 fm, g1=0x80 oki1, g2=0x23 oki2); keep both in sync.
+    - { name: fm,   module: jt51,   rsum: 90k  }   # YM2151 music (nf24 gain 0x20 -> ~0x14 expected)
+    - { name: oki1, module: jt6295, rsum: 20k  }   # dominant SFX/voice (anchor, gain 0x80)
+    - { name: oki2, module: jt6295, rsum: 110k }   # quiet SFX (nf24 gain 0x18 -> ~0x23 expected)
+
+sdram:
+  banks:
+    # BA0 — VESTIGIAL tied-off placeholder (the real ARM work RAM is BRAM, u_wram in jtnslasher_game).
+    # Must be 16-bit: jtframe_ram_rq.din is hardwired [15:0], so a 32-bit RW slot fails to elaborate in
+    # Quartus (din[0+:32] out of range). Kept (not removed) to preserve BA1/BA2/BA3 numbering. TODO: bram:.
+    - buses:
+      - { name: ram,  addr_width: 17, data_width: 16, rw: true, din: main_dout, dsn: dsn }
+    # BA1 — main ARM ROM (1 MB) + Z80 (64 KB) + OKI samples (512 KB ea)
+    - buses:
+      - { name: main, addr_width: 20, data_width: 32 }
+      - { name: snd,  addr_width: 16, data_width:  8, offset: SND_OFFSET  }
+      - { name: oki1, addr_width: 19, data_width:  8, offset: PCM1_OFFSET }
+      - { name: oki2, addr_width: 19, data_width:  8, offset: PCM2_OFFSET }
+    # BA2 — tilemap gfx (Arch B: ENCRYPTED reorder(raw), 16-bit; jtnslasher_gfxdec decrypts at fetch)
+    # + gfx4/obj1 (nf24: relocated from BA3 to the BA2 tail @ GFX4_OFFSET = BA2-rel 0x400000).
+    - buses:
+      - { name: gfx1a, addr_width: 21, data_width: 16 }                          # PF1 (chars8 wrapper)
+      - { name: gfx1b, addr_width: 21, data_width: 16 }                          # PF2 (tiles16, same gfx1)
+      - { name: gfx2a, addr_width: 21, data_width: 16, offset: GFX2_OFFSET  }    # PF3
+      - { name: gfx2b, addr_width: 21, data_width: 16, offset: GFX2_OFFSET  }    # PF4 (same gfx2)
+      - { name: obj1,  addr_width: 20, data_width: 32, offset: GFX4_OFFSET  }    # gfx4 4bpp (1 MB), ex-BA3
+    # BA3 — obj0 ONLY (nf24 8-byte-slot pack, 16 MB, DW32-DOUBLE single-burst fetch)
+    - buses:
+      - { name: obj0, addr_width: 24, data_width: 32 }                           # gfx3 planes+plane4 slots (10 MB used)

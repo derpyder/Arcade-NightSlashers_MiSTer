@@ -35,8 +35,9 @@ Region notes: **Over Sea** (World, ver 1.2) and **Korea** (ver 1.3, parent); the
 - Reference: MAME 0.284 `deco32` driver.
 - Port by **[rejectedcoins](https://rejectedcoins.com)**.
 
-License: **GPLv3**. This repository currently distributes binary releases and the arcade ROM
-mapping files. **Source lands with the family release** — the full tree publishes here once the
-remaining Data East family cores built on it are completed.
+License: **GPLv3** (see [LICENSE](LICENSE)). Core source is in [`source/`](source/) — a drop-in
+tree for [jtcores](https://github.com/jotego/jtcores); build notes in
+[`source/SOURCE.md`](source/SOURCE.md). Simulation golden data is regenerated from your own ROMs
+(none is distributed).
 
 *This core is for use with legally obtained ROMs only.*
