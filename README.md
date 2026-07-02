@@ -33,7 +33,7 @@ Region notes: **Over Sea** (World, ver 1.2) and **Korea** (ver 1.3, parent); the
 - Built on **[JTFRAME](https://github.com/jotego/jtframe)** by Jose Tejada (jotego) — thank you.
 - Sound: jt51 (YM2151) and jt6295 (OKI) by jotego. ARM CPU derived from the Amber project (OpenCores).
 - Reference: MAME 0.284 `deco32` driver.
-- Port by **rejectedcoins**.
+- Port by **[rejectedcoins](https://rejectedcoins.com)**.
 
 License: **GPLv3**. This repository currently distributes binary releases and the arcade ROM
 mapping files. **Source lands with the family release** — the full tree publishes here once the
