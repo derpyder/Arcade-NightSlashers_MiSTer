@@ -1,6 +1,10 @@
 <!--  Night Slashers (Data East, 1994) — deco32 / encrypted ARM6 core for MiSTer.
       Port by rejectedcoins, built on JTFRAME by Jose Tejada (jotego). License: GPLv3.
 
+      v1.1 (2026-07-04): SOUND UPDATE - rebalanced audio mix (music down, voice up, SFX),
+      diffed per-channel vs MAME. EEPROM now ships BLANK so each set self-configures its
+      region on first boot (restores per-region gore, incl. Japan/Korea). Over Sea CRCs fixed.
+
       v1.0 (2026-07-02): full video pipeline HW-verified — dual DECO 52/153 sprite
       chips, 4 playfields (per-tile flip + rowscroll-ready), Ace (chip 99) palette
       fade + variable alpha (stage-2 mist, carriage transparency, shadows), joint-8bpp
@@ -23,7 +27,7 @@
     <joystick>8</joystick>
     <region>Japan</region>
     <rom index="0" zip="nslasherj.zip|nslasher.zip" md5="None">
-        <!-- maincpu - starts at 0x0 - length 0x100000 (20 bits) ; Japan program (lx-*) = gore hardwired -->
+        <!-- maincpu - starts at 0x0 - length 0x100000 (20 bits) ; Japan program (lx-*) - self-heals to Japan region (gore) from the blank EEPROM -->
         <interleave output="32">
             <part name="lx-01.2f" crc="a6df2152" map="0012"/>
             <part name="lx-00.1f" crc="6ed5fb88" map="1200"/>
