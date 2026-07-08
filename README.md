@@ -4,6 +4,27 @@
 First FPGA implementation of the Data East **deco32** hardware: encrypted ARM6 main CPU (DE 156),
 dual DECO 52/153 sprite generators, four playfields, and the "Ace" (chip 99) colour blender.
 
+## v1.2 — Combing largely fixed (2026-07-07)
+
+The per-scanline "combing" / tearing artifact — most visible on **V-Integer scaling** or a CRT —
+is now gone across essentially all attract and gameplay scenes.
+
+- **Per-scanline render-lead on the sprite engine** — the sprite engine now draws each line a few
+  scanlines *ahead* of the display, so heavy lines borrow timing slack from lighter neighbours
+  instead of over-running their own scanline and showing a stale half. Removes the sprite-driven comb.
+- **Same render-lead on the four playfields** — closes the residual sky/ground comb (e.g. the
+  combing in the top-right sky near the "insert coin" text) that survived the sprite-only fix.
+- **Pure video-timing fix** — no SDRAM re-layout, no ROM/MRA changes. Existing MRAs are unchanged.
+- Validated in simulation, then **confirmed on the DE10-Nano cabinet** before release.
+
+> **Known issue (this is a _partial_ fix):** Hong Hua's jump/special still combs on the ground
+> plane. Her special spawns a ~256-sprite burst that momentarily *saturates* the shared SDRAM and
+> starves the ground playfield — a render-lead can recover a congested bus, not a saturated one.
+> Everything else (attract + normal gameplay) is clean. A fuller fix that moves the sprite graphics
+> onto the otherwise-idle DDR3 port is in development.
+
+One rbf serves all three MRAs.
+
 ## v1.1 — Sound update (2026-07-04)
 
 - **Rebalanced audio mix** — music (YM2151) brought down, voice (OKI1 speech) up, SFX (OKI2)
