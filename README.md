@@ -4,6 +4,24 @@
 First FPGA implementation of the Data East **deco32** hardware: encrypted ARM6 main CPU (DE 156),
 dual DECO 52/153 sprite generators, four playfields, and the "Ace" (chip 99) colour blender.
 
+## v1.3 — Combing fully fixed (2026-07-07)
+
+The per-scanline "combing" / tearing artifact — most visible on **V-Integer scaling** or a CRT — is now
+**completely** gone, including the last hold-out: Hong Hua's jump/special.
+
+- **Sprite graphics moved to DDR3.** v1.2's render-lead cleared combing everywhere *except* Hua's special,
+  whose ~256-sprite burst saturated the shared SDRAM and starved the ground playfield. This release copies
+  both sprite sets onto the otherwise-idle DDR3 at boot, giving the four playfields the **entire** SDRAM
+  bandwidth — so Hua's ground plane stays clean.
+- Includes everything from v1.2 (per-scanline render-lead on sprites + playfields). **No ROM/MRA changes** —
+  if you're on v1.2, just replace the `.rbf`.
+- A **~1-second black gap at startup** is normal — the one-time sprite-gfx copy into DDR3.
+- **Input fix:** leaving OSD *Service mode* on while starting a game no longer joins a phantom 2nd player off
+  a single pad (the one-controller service-menu I/O-check exit still works).
+- Validated in sim, confirmed on the DE10-Nano cabinet.
+
+One rbf serves all three MRAs.
+
 ## v1.2 — Combing largely fixed (2026-07-07)
 
 The per-scanline "combing" / tearing artifact — most visible on **V-Integer scaling** or a CRT —
