@@ -4,6 +4,31 @@
 First FPGA implementation of the Data East **deco32** hardware: encrypted ARM6 main CPU (DE 156),
 dual DECO 52/153 sprite generators, four playfields, and the "Ace" (chip 99) colour blender.
 
+## ⬇️ Easiest install — one line, then `update_all`
+
+Add this to **`/media/fat/downloader.ini`** on your SD card (create the file if it doesn't exist), then run
+**Scripts → `update_all`** on the MiSTer:
+
+```ini
+[derpyder_nightslashers]
+db_url = https://raw.githubusercontent.com/derpyder/Arcade-NightSlashers_MiSTer/main/nightslashers.json.zip
+```
+
+That's it — `update_all` installs the core to `_Arcade/cores/`, the three region MRAs to `_Arcade/`, and
+**keeps them updated automatically** on every future run. Keep your existing `[distribution_mister]` section too.
+You still supply the ROMs yourself: `nslasher` / `nslasherj` / `nslashers` (MAME set 0.284) in
+`/media/fat/games/mame/`. Prefer to copy files by hand? See [Manual install](#manual-install) below.
+
+## v1.4 — Sprite / special-attack fade fix (2026-07-12)
+
+During attract scene transitions, **character sprites and special-attack animations now fade to black
+*with* the rest of the scene** instead of staying frozen on screen. Root cause: the sprite-priority
+"colour-fade mode" bit was being masked off, locking sprites to the non-faded palette. **No ROM/MRA
+changes** — if you're on v1.3, just replace the `.rbf`. This release also adds the one-line `update_all`
+install (top of this page).
+
+> See [Known issues](#known-issues) for the outstanding title-screen starfield item.
+
 ## v1.3 — Combing fully fixed (2026-07-07)
 
 The per-scanline "combing" / tearing artifact — most visible on **V-Integer scaling** or a CRT — is now
@@ -70,7 +95,9 @@ Fully playable, hardware-verified on DE10-Nano:
 - Z80 + YM2151 + dual OKI M6295 sound
 - 93C46 EEPROM settings + service menu, 3-player inputs
 
-## Install
+## Manual install
+
+Prefer copying files by hand instead of the one-line `update_all` method at the top of this page:
 
 1. Copy `releases/jtnslasher_*.rbf` to `/media/fat/_Arcade/cores/`
 2. Copy the `.mra` files to `/media/fat/_Arcade/`
@@ -94,6 +121,14 @@ Because the EEPROM ships blank, this is an operator setting you enable once in t
 resets, just repeat the steps.
 
 > Do not regenerate these MRAs with stock tooling — they encode this core's custom SDRAM layout.
+
+## Known issues
+
+- **Title-screen starfield twinkle** — the twinkling stars on the logo/title screen don't animate
+  correctly (they flash briefly, then drop out). A hardware-only palette-write timing quirk; cosmetic and
+  limited to the attract title screen. Under investigation.
+- **Sprite edge wrap** — on some scenes a right-edge sprite column can wrap to the left edge. Under
+  investigation.
 
 ## Credits & license
 
