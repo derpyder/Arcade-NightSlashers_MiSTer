@@ -1,0 +1,30 @@
+{
+  "db_id": "derpyder_nightslashers",
+  "db_url": "https://raw.githubusercontent.com/derpyder/Arcade-NightSlashers_MiSTer/main/nightslashers.json.zip",
+  "files": {
+    "_Arcade/Night Slashers (Japan Rev 1.2, DE-0397-0 PCB).mra": {
+      "hash": "2ad386e00bf459aa9a17e56fab1427e4",
+      "size": 4314,
+      "url": "https://github.com/derpyder/Arcade-NightSlashers_MiSTer/releases/download/v1.4/Night.Slashers.Japan.Rev.1.2.DE-0397-0.PCB.mra"
+    },
+    "_Arcade/Night Slashers (Korea Rev 1.3, DE-0397-0 PCB).mra": {
+      "hash": "04ff709554738c47520bc74dc6cec902",
+      "size": 4222,
+      "url": "https://github.com/derpyder/Arcade-NightSlashers_MiSTer/releases/download/v1.4/Night.Slashers.Korea.Rev.1.3.DE-0397-0.PCB.mra"
+    },
+    "_Arcade/Night Slashers (Over Sea Rev 1.2, DE-0397-0 PCB).mra": {
+      "hash": "32fa46f49c7d4d6952deaa7da51fdbe9",
+      "size": 4236,
+      "url": "https://github.com/derpyder/Arcade-NightSlashers_MiSTer/releases/download/v1.4/Night.Slashers.Over.Sea.Rev.1.2.DE-0397-0.PCB.mra"
+    },
+    "_Arcade/cores/jtnslasher_20260712.rbf": {
+      "hash": "da7c58c2954b9a26173ba1ca7716deb6",
+      "size": 3654624,
+      "url": "https://github.com/derpyder/Arcade-NightSlashers_MiSTer/releases/download/v1.4/jtnslasher_20260712.rbf"
+    }
+  },
+  "folders": {
+    "_Arcade": {},
+    "_Arcade/cores": {}
+  }
+}
